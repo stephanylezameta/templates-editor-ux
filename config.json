@@ -4,5 +4,6 @@
   "filter_columns": ["Casos de Uso", "AUDIENCIA", "Oferta", "channel_id"],
   "hidden_columns": ["event", "message_type"],
   "ignored_columns": ["event", "message_type"],
+  "allowed_scenarios": [0, 11, 21, 22, 23],
   "column_order": ["title", "detail"]
 }

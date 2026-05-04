@@ -92,6 +92,13 @@ if st.session_state.original_df is None:
 
     st.session_state.original_df = df_raw.copy()
 
+    # Filtrar solo scenarios permitidos
+    allowed = config.get("allowed_scenarios")
+    if allowed and "scenario_id" in st.session_state.original_df.columns:
+        st.session_state.original_df = st.session_state.original_df[
+            st.session_state.original_df["scenario_id"].astype(str).isin([str(s) for s in allowed])
+        ].reset_index(drop=True)
+
 # ---------------------------------------------------------------------------
 # Construir working_df: original + cambios acumulados
 # ---------------------------------------------------------------------------
