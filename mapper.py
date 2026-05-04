@@ -1,21 +1,8 @@
-"""Autocompletado de campos vacíos usando reglas de mapeo configurables."""
+"""Autocompletado de campos vacíos usando relaciones extraídas de los propios datos."""
 
-import json
-import os
 import re
 
 import pandas as pd
-
-
-def load_mapeos(path: str = "mapeos.json") -> dict:
-    """Lee reglas de mapeo desde un archivo JSON.
-
-    Si el archivo no existe, retorna un dict vacío sin lanzar error.
-    """
-    if not os.path.exists(path):
-        return {}
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def extract_channel_id(template_id: str) -> str | None:
@@ -24,64 +11,91 @@ def extract_channel_id(template_id: str) -> str | None:
     Ejemplos: #AU1 → AU1, #CAP → CAP.
     Retorna None si no encuentra el patrón.
     """
-    match = re.search(r"#([A-Z0-9]+)", template_id)
+    match = re.search(r"#([A-Z0-9]+)", str(template_id))
     return match.group(1) if match else None
 
 
+def build_mapeos_from_data(df: pd.DataFrame) -> dict:
+    """Construye mapeos dinámicamente a partir de los registros que SÍ tienen datos completos.
+
+    Extrae relaciones:
+    - scenario_id → Casos de Uso
+    - channel_id (extraído de template_id) → AUDIENCIA
+    - item_id → Oferta
+
+    Retorna dict con la misma estructura que mapeos.json.
+    """
+    mapeos: dict = {"scenario_id": {}, "channel_id": {}, "item_id": {}}
+
+    for _, row in df.iterrows():
+        # scenario_id → Casos de Uso
+        caso = row.get("Casos de Uso")
+        sid = str(row.get("scenario_id", ""))
+        if caso and str(caso).strip() and sid:
+            mapeos["scenario_id"][sid] = {"Casos de Uso": str(caso).strip()}
+
+        # channel_id (desde template_id) → AUDIENCIA
+        audiencia = row.get("AUDIENCIA")
+        tid = str(row.get("template_id", ""))
+        channel = extract_channel_id(tid)
+        if audiencia and str(audiencia).strip() and channel:
+            mapeos["channel_id"][channel] = {"AUDIENCIA": str(audiencia).strip()}
+
+        # item_id → Oferta
+        oferta = row.get("Oferta")
+        iid = str(row.get("item_id", ""))
+        if oferta and str(oferta).strip() and iid:
+            mapeos["item_id"][iid] = {"Oferta": str(oferta).strip()}
+
+    return mapeos
+
+
 def autocomplete(
-    df: pd.DataFrame, mapeos: dict, ignored_columns: list[str] | None = None
-) -> tuple[pd.DataFrame, list[str]]:
-    """Completa campos vacíos del DataFrame usando reglas de mapeo.
+    df: pd.DataFrame, ignored_columns: list[str] | None = None
+) -> pd.DataFrame:
+    """Completa campos vacíos usando relaciones extraídas de los propios datos.
 
-    Busca mapeos por scenario_id, channel_id (extraído de template_id)
-    e item_id. Registra advertencias para campos vacíos sin mapeo.
-    Los campos en ignored_columns se saltan sin generar advertencia.
+    1. Construye mapeos desde registros completos
+    2. Aplica mapeos a registros con campos vacíos
 
-    Retorna (df_completado, lista_advertencias).
+    Retorna df_completado.
     """
     df = df.copy()
-    advertencias: list[str] = []
     skip = set(ignored_columns or [])
+
+    # Construir mapeos desde los datos completos
+    mapeos = build_mapeos_from_data(df)
 
     for idx, row in df.iterrows():
         template_id = str(row.get("template_id", ""))
 
-        # Recopilar todos los campos mapeables para esta fila
+        # Recopilar campos mapeables para esta fila
         campos_mapeados: dict[str, str] = {}
 
         # Mapeo por scenario_id
-        if "scenario_id" in mapeos:
-            sid = str(row.get("scenario_id", ""))
-            if sid in mapeos["scenario_id"]:
-                campos_mapeados.update(mapeos["scenario_id"][sid])
+        sid = str(row.get("scenario_id", ""))
+        if sid in mapeos["scenario_id"]:
+            campos_mapeados.update(mapeos["scenario_id"][sid])
 
         # Mapeo por channel_id (extraído de template_id)
-        if "channel_id" in mapeos:
-            channel = extract_channel_id(template_id)
-            if channel and channel in mapeos["channel_id"]:
-                campos_mapeados.update(mapeos["channel_id"][channel])
+        channel = extract_channel_id(template_id)
+        if channel and channel in mapeos["channel_id"]:
+            campos_mapeados.update(mapeos["channel_id"][channel])
 
         # Mapeo por item_id
-        if "item_id" in mapeos:
-            iid = str(row.get("item_id", ""))
-            if iid in mapeos["item_id"]:
-                campos_mapeados.update(mapeos["item_id"][iid])
+        iid = str(row.get("item_id", ""))
+        if iid in mapeos["item_id"]:
+            campos_mapeados.update(mapeos["item_id"][iid])
 
         # Aplicar mapeos solo a campos vacíos
-        for campo in df.columns:
+        for campo, valor_mapeo in campos_mapeados.items():
             if campo in skip:
+                continue
+            if campo not in df.columns:
                 continue
             valor = row[campo]
             es_vacio = pd.isna(valor) or (isinstance(valor, str) and valor.strip() == "")
+            if es_vacio:
+                df.at[idx, campo] = valor_mapeo
 
-            if not es_vacio:
-                continue
-
-            if campo in campos_mapeados:
-                df.at[idx, campo] = campos_mapeados[campo]
-            else:
-                advertencias.append(
-                    f"Registro {template_id}: campo '{campo}' vacío sin mapeo"
-                )
-
-    return df, advertencias
+    return df

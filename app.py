@@ -23,7 +23,7 @@ if _script_dir not in sys.path:
 from data_loader import load_config, load_resultado, list_versions, load_version, save_version
 from editor import detect_changes, ChangeReport
 from exporter import export_changes
-from mapper import load_mapeos, autocomplete
+from mapper import autocomplete
 from validator import validate_distribution
 
 # ---------------------------------------------------------------------------
@@ -79,14 +79,9 @@ if st.session_state.original_df is None:
         st.error(f"Error al cargar resultado.xlsx: {e}")
         st.stop()
 
-    # Cargar mapeos (puede no existir — retorna {} sin error)
-    mapeos_path = os.path.join(_script_dir, "mapeos.json")
-    mapeos = load_mapeos(mapeos_path)
-
-    # Autocompletado de campos vacíos
-    if mapeos:
-        ignored = config.get("ignored_columns", [])
-        df_raw, _ = autocomplete(df_raw, mapeos, ignored_columns=ignored)
+    # Autocompletado de campos vacíos desde los propios datos
+    ignored = config.get("ignored_columns", [])
+    df_raw = autocomplete(df_raw, ignored_columns=ignored)
 
     st.session_state.original_df = df_raw.copy()
 
