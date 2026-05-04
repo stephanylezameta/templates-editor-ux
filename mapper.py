@@ -1,4 +1,5 @@
 """Autocompletado de campos vacíos usando relaciones extraídas de los propios datos."""
+from __future__ import annotations
 
 import re
 
