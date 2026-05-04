@@ -1,0 +1,13 @@
+{
+  "resultado_path": "D:\\Kiro\\Wording\\output\\resultado.xlsx",
+  "versions_dir": "D:\\Kiro\\Wording\\output\\versions",
+  "smtp": {
+    "host": "smtp.example.com",
+    "port": 587,
+    "user": "user@example.com",
+    "password": "",
+    "use_tls": true
+  },
+  "recipients": ["destinatario1@example.com", "destinatario2@example.com"],
+  "filter_columns": ["Casos de Uso", "AUDIENCIA", "scenario_id", "channel_id"]
+}
