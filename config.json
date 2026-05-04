@@ -1,13 +1,7 @@
 {
   "resultado_path": "data/resultado.xlsx",
   "versions_dir": "data/versions",
-  "smtp": {
-    "host": "smtp.example.com",
-    "port": 587,
-    "user": "user@example.com",
-    "password": "",
-    "use_tls": true
-  },
-  "recipients": ["destinatario1@example.com", "destinatario2@example.com"],
-  "filter_columns": ["Casos de Uso", "AUDIENCIA", "Oferta", "channel_id"]
+  "filter_columns": ["Casos de Uso", "AUDIENCIA", "Oferta", "channel_id"],
+  "hidden_columns": ["event"],
+  "column_order": ["title", "detail"]
 }
