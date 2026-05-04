@@ -9,5 +9,5 @@
     "use_tls": true
   },
   "recipients": ["destinatario1@example.com", "destinatario2@example.com"],
-  "filter_columns": ["Casos de Uso", "AUDIENCIA", "scenario_id", "channel_id"]
+  "filter_columns": ["Casos de Uso", "AUDIENCIA", "Oferta", "channel_id"]
 }

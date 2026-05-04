@@ -95,7 +95,7 @@ st.sidebar.metric("Templates mostrados", len(df_filtrado))
 # ---------------------------------------------------------------------------
 # Área principal — Editor de datos
 # ---------------------------------------------------------------------------
-df_editado = st.data_editor(df_filtrado, num_rows="dynamic", use_container_width=True)
+df_editado = st.data_editor(df_filtrado, num_rows="dynamic", width="stretch")
 
 # Indicador de cambios pendientes
 if not df_editado.equals(st.session_state.original_df):
