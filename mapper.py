@@ -5,7 +5,7 @@ import re
 import pandas as pd
 
 
-def extract_channel_id(template_id: str) -> str | None:
+def extract_channel_id(template_id: str):
     """Extrae el channel_id desde template_id buscando el patrón #XXX.
 
     Ejemplos: #AU1 → AU1, #CAP → CAP.
@@ -51,7 +51,7 @@ def build_mapeos_from_data(df: pd.DataFrame) -> dict:
 
 
 def autocomplete(
-    df: pd.DataFrame, ignored_columns: list[str] | None = None
+    df: pd.DataFrame, ignored_columns: list = None
 ) -> pd.DataFrame:
     """Completa campos vacíos usando relaciones extraídas de los propios datos.
 
