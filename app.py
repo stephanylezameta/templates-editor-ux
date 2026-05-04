@@ -85,7 +85,8 @@ if st.session_state.original_df is None:
 
     # Autocompletado de campos vacíos
     if mapeos:
-        df_raw, advertencias = autocomplete(df_raw, mapeos)
+        ignored = config.get("ignored_columns", [])
+        df_raw, advertencias = autocomplete(df_raw, mapeos, ignored_columns=ignored)
         for adv in advertencias:
             st.warning(adv)
 

@@ -29,17 +29,19 @@ def extract_channel_id(template_id: str) -> str | None:
 
 
 def autocomplete(
-    df: pd.DataFrame, mapeos: dict
+    df: pd.DataFrame, mapeos: dict, ignored_columns: list[str] | None = None
 ) -> tuple[pd.DataFrame, list[str]]:
     """Completa campos vacíos del DataFrame usando reglas de mapeo.
 
     Busca mapeos por scenario_id, channel_id (extraído de template_id)
     e item_id. Registra advertencias para campos vacíos sin mapeo.
+    Los campos en ignored_columns se saltan sin generar advertencia.
 
     Retorna (df_completado, lista_advertencias).
     """
     df = df.copy()
     advertencias: list[str] = []
+    skip = set(ignored_columns or [])
 
     for idx, row in df.iterrows():
         template_id = str(row.get("template_id", ""))
@@ -67,6 +69,8 @@ def autocomplete(
 
         # Aplicar mapeos solo a campos vacíos
         for campo in df.columns:
+            if campo in skip:
+                continue
             valor = row[campo]
             es_vacio = pd.isna(valor) or (isinstance(valor, str) and valor.strip() == "")
 
