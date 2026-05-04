@@ -1,6 +1,6 @@
 {
-  "resultado_path": "D:\\Kiro\\Wording\\output\\resultado.xlsx",
-  "versions_dir": "D:\\Kiro\\Wording\\output\\versions",
+  "resultado_path": "data/resultado.xlsx",
+  "versions_dir": "data/versions",
   "smtp": {
     "host": "smtp.example.com",
     "port": 587,

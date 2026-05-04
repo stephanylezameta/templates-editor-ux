@@ -27,17 +27,13 @@ def load_config(path: str = "config.json") -> dict:
 
 
 def load_resultado(config: dict) -> pd.DataFrame:
-    """Lee resultado.xlsx desde la ruta indicada en config.
+    """Lee resultado.xlsx desde ruta local.
 
     Args:
         config: Diccionario de configuración con clave ``resultado_path``.
 
     Returns:
         DataFrame con los templates vigentes.
-
-    Raises:
-        FileNotFoundError: Si el archivo no existe.
-        ValueError: Si el archivo no puede parsearse como Excel válido.
     """
     path = config["resultado_path"]
     if not os.path.isfile(path):
