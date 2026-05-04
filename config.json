@@ -2,6 +2,7 @@
   "resultado_path": "data/resultado.xlsx",
   "versions_dir": "data/versions",
   "filter_columns": ["Casos de Uso", "AUDIENCIA", "Oferta", "channel_id"],
-  "hidden_columns": ["event"],
+  "hidden_columns": ["event", "message_type"],
+  "ignored_columns": ["event", "message_type"],
   "column_order": ["title", "detail"]
 }

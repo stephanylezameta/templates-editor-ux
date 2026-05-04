@@ -178,6 +178,8 @@ else:
     # ------------------------------------------------------------------
     # Detección de cambios inline — comparar editado vs display
     # ------------------------------------------------------------------
+    ignored_columns = set(config.get("ignored_columns", []))
+
     if df_editado is not None and not df_editado.empty:
         # Comparar fila a fila entre df_editado y df_display
         min_rows = min(len(df_editado), len(df_display))
@@ -191,6 +193,8 @@ else:
                 continue
 
             for col in df_editado.columns:
+                if col in ignored_columns:
+                    continue
                 val_nuevo = row_editada[col]
                 val_original = row_original[col] if col in df_display.columns else None
 
