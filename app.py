@@ -92,12 +92,26 @@ if st.session_state.original_df is None:
 
     st.session_state.original_df = df_raw.copy()
 
+    # Eliminar columnas ignoradas al cargar
+    drop_cols = config.get("drop_columns", [])
+    for col in drop_cols:
+        if col in st.session_state.original_df.columns:
+            st.session_state.original_df = st.session_state.original_df.drop(columns=[col])
+
     # Filtrar solo scenarios permitidos
     allowed = config.get("allowed_scenarios")
     if allowed and "scenario_id" in st.session_state.original_df.columns:
         st.session_state.original_df = st.session_state.original_df[
             st.session_state.original_df["scenario_id"].astype(str).isin([str(s) for s in allowed])
         ].reset_index(drop=True)
+
+    # Excluir registros con patrones ignorados en template_id (ej. ITM#)
+    exclude_patterns = config.get("exclude_template_patterns", [])
+    if exclude_patterns and "template_id" in st.session_state.original_df.columns:
+        for pattern in exclude_patterns:
+            st.session_state.original_df = st.session_state.original_df[
+                ~st.session_state.original_df["template_id"].astype(str).str.contains(pattern, na=False)
+            ].reset_index(drop=True)
 
 # ---------------------------------------------------------------------------
 # Construir working_df: original + cambios acumulados
