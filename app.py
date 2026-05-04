@@ -300,15 +300,42 @@ with col3:
 with col4:
     if st.session_state.accumulated_changes:
         try:
-            # Generar Excel en memoria con los registros modificados
+            from openpyxl.styles import PatternFill
+
+            # Columnas fijas que siempre aparecen
+            FIXED_COLS = ["Casos de Uso", "AUDIENCIA", "Oferta", "template_id"]
+
+            # Recopilar columnas modificadas
+            changed_cols = set()
+            for tid, cols in st.session_state.accumulated_changes.items():
+                changed_cols.update(cols.keys())
+
+            # Columnas finales: fijas + solo las que cambiaron (sin duplicar)
+            export_cols = FIXED_COLS + [c for c in changed_cols if c not in FIXED_COLS]
+            export_cols = [c for c in export_cols if c in st.session_state.working_df.columns]
+
+            # Filtrar solo registros modificados
             df_cambios = st.session_state.working_df[
                 st.session_state.working_df["template_id"]
                 .astype(str)
                 .isin([str(k) for k in st.session_state.accumulated_changes.keys()])
-            ]
+            ][export_cols].copy()
 
+            # Escribir Excel con resaltado amarillo en celdas modificadas
             buffer = io.BytesIO()
-            df_cambios.to_excel(buffer, index=False, engine="openpyxl")
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                df_cambios.to_excel(writer, index=False, sheet_name="Cambios")
+                ws = writer.sheets["Cambios"]
+                yellow = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+
+                for row_idx, (_, row) in enumerate(df_cambios.iterrows(), start=2):
+                    tid = str(row.get("template_id", ""))
+                    if tid in st.session_state.accumulated_changes:
+                        for col_name in st.session_state.accumulated_changes[tid]:
+                            if col_name in export_cols:
+                                col_idx = export_cols.index(col_name) + 1
+                                ws.cell(row=row_idx, column=col_idx).fill = yellow
+
             excel_bytes = buffer.getvalue()
 
             st.download_button(
