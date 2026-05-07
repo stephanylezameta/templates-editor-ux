@@ -202,18 +202,29 @@ else:
     )
 
     # ------------------------------------------------------------------
-    # Detección de cambios inline — comparar editado vs display
+    # Detección de cambios inline — comparar editado vs ORIGINAL
     # ------------------------------------------------------------------
     ignored_columns = set(config.get("ignored_columns", []))
 
     if df_editado is not None and not df_editado.empty:
-        # Comparar fila a fila entre df_editado y df_display
-        min_rows = min(len(df_editado), len(df_display))
+        # Construir df_original_display con las mismas columnas y filtros pero SIN cambios acumulados
+        df_orig_filtered = st.session_state.original_df.copy()
+        for col, val in filtros_activos.items():
+            if col in df_orig_filtered.columns:
+                df_orig_filtered = df_orig_filtered[df_orig_filtered[col].astype(str) == val]
+        for hcol in hidden_columns:
+            if hcol in df_orig_filtered.columns:
+                df_orig_filtered = df_orig_filtered.drop(columns=[hcol])
+        cols_p = [c for c in column_order_first if c in df_orig_filtered.columns]
+        cols_r = [c for c in df_orig_filtered.columns if c not in cols_p]
+        df_orig_filtered = df_orig_filtered[cols_p + cols_r]
+
+        # Comparar fila a fila entre df_editado y el original (sin cambios)
+        min_rows = min(len(df_editado), len(df_orig_filtered))
         for i in range(min_rows):
             row_editada = df_editado.iloc[i]
-            row_original = df_display.iloc[i]
+            row_original = df_orig_filtered.iloc[i]
 
-            # Obtener template_id de la fila editada
             tid = str(row_editada.get("template_id", ""))
             if not tid:
                 continue
@@ -222,7 +233,7 @@ else:
                 if col in ignored_columns:
                     continue
                 val_nuevo = row_editada[col]
-                val_original = row_original[col] if col in df_display.columns else None
+                val_original = row_original[col] if col in df_orig_filtered.columns else None
 
                 if str(val_nuevo) != str(val_original):
                     if tid not in st.session_state.accumulated_changes:
@@ -230,8 +241,8 @@ else:
                     st.session_state.accumulated_changes[tid][col] = val_nuevo
 
         # Filas nuevas (agregadas por el usuario)
-        if len(df_editado) > len(df_display):
-            for i in range(len(df_display), len(df_editado)):
+        if len(df_editado) > len(df_orig_filtered):
+            for i in range(len(df_orig_filtered), len(df_editado)):
                 row_nueva = df_editado.iloc[i]
                 tid = str(row_nueva.get("template_id", f"new_{i}"))
                 if tid not in st.session_state.accumulated_changes:
