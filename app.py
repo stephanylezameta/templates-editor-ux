@@ -34,20 +34,28 @@ st.set_page_config(page_title="Editor de Templates", layout="wide", page_icon="�
 st.markdown(
     """
     <style>
-        .main .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; max-width: 100%; }
-        h1, h2, h3 { color: #1a5276; margin-bottom: 0.3rem; }
-        h1 { font-size: 1.5rem; }
-        h2 { font-size: 1.1rem; }
-        p, li, span, label, .stMarkdown { font-size: 0.85rem; }
-        .stMetric label { font-size: 0.75rem; }
-        .stMetric [data-testid="stMetricValue"] { font-size: 1.2rem; color: #1a5276; }
+        .main .block-container { padding-top: 0.3rem; padding-bottom: 0.3rem; max-width: 100%; }
+        h1, h2, h3 { color: #1a5276; margin-bottom: 0.2rem; }
+        h1 { font-size: 1.3rem; }
+        h2 { font-size: 1rem; }
+        p, li, span, label, .stMarkdown, .stText { font-size: 0.78rem !important; }
+        .stMetric label { font-size: 0.7rem; }
+        .stMetric [data-testid="stMetricValue"] { font-size: 1rem; color: #1a5276; }
         div[data-testid="stSidebar"] { background-color: #f0f4f8; }
         div[data-testid="stSidebar"] .block-container { padding-top: 0.5rem; }
-        .stAlert { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
-        .stDivider { margin: 0.3rem 0; }
-        div[data-testid="stVerticalBlock"] > div { gap: 0.4rem; }
-        .stDataFrame { font-size: 0.8rem; }
-        button[kind="primary"], button[kind="secondary"] { font-size: 0.8rem; padding: 0.3rem 0.8rem; }
+        .stAlert { padding: 0.4rem 0.6rem; font-size: 0.75rem !important; }
+        div[data-testid="stVerticalBlock"] > div { gap: 0.2rem; }
+        .stDataFrame { font-size: 0.75rem !important; }
+        /* Inputs y text areas más compactos en el dialog */
+        .stTextInput input, .stTextArea textarea {
+            font-size: 0.78rem !important;
+            padding: 0.25rem 0.4rem !important;
+            min-height: unset !important;
+        }
+        .stTextArea textarea { height: 2.2rem !important; resize: vertical; }
+        .stTextInput label, .stTextArea label { font-size: 0.72rem !important; margin-bottom: 0.1rem; }
+        button { font-size: 0.78rem !important; padding: 0.25rem 0.6rem !important; }
+        div[role="dialog"] { font-size: 0.78rem !important; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -226,7 +234,7 @@ def edit_dialog(tid: str):
         for j, col_name in enumerate(pair):
             current_val = str(row_data[col_name]) if col_name in row_data.index and pd.notna(row_data[col_name]) else ""
             with cols[j]:
-                new_values[col_name] = st.text_area(col_name, value=current_val, height=68, key=f"dlg_{tid}_{col_name}")
+                new_values[col_name] = st.text_input(col_name, value=current_val, key=f"dlg_{tid}_{col_name}")
 
     st.divider()
     if st.button("💾 Guardar cambio", use_container_width=True, type="primary"):
