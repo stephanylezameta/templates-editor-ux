@@ -56,6 +56,19 @@ st.markdown(
         .stTextInput label, .stTextArea label { font-size: 0.72rem !important; margin-bottom: 0.1rem; }
         button { font-size: 0.78rem !important; padding: 0.25rem 0.6rem !important; }
         div[role="dialog"] { font-size: 0.78rem !important; }
+        /* Botón X de cerrar diálogo más grande y visible */
+        div[role="dialog"] button[aria-label="Close"] {
+            width: 2rem !important;
+            height: 2rem !important;
+            font-size: 1.4rem !important;
+            border: 2px solid #ccc !important;
+            border-radius: 50% !important;
+            background: #f8f8f8 !important;
+        }
+        div[role="dialog"] button[aria-label="Close"]:hover {
+            background: #e0e0e0 !important;
+            border-color: #999 !important;
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -218,7 +231,15 @@ def edit_dialog(tid: str):
         return
 
     row_data = st.session_state.working_df[row_mask].iloc[0]
-    st.caption(f"Template: **{tid}**")
+
+    # Header: botón guardar arriba a la derecha + título
+    header_left, header_right = st.columns([3, 1])
+    with header_left:
+        st.caption(f"Template: **{tid}**")
+    with header_right:
+        save_clicked = st.button("💾 Guardar cambio", use_container_width=True, type="primary", key=f"save_top_{tid}")
+
+    st.divider()
 
     # Columnas editables
     editable_cols = [
@@ -236,8 +257,7 @@ def edit_dialog(tid: str):
             with cols[j]:
                 new_values[col_name] = st.text_input(col_name, value=current_val, key=f"dlg_{tid}_{col_name}")
 
-    st.divider()
-    if st.button("💾 Guardar cambio", use_container_width=True, type="primary"):
+    if save_clicked:
         # Comparar contra original
         original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
         original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
