@@ -178,6 +178,17 @@ cols_resto = [c for c in df_display.columns if c not in cols_primero]
 df_display = df_display[cols_primero + cols_resto]
 
 # ---------------------------------------------------------------------------
+# Pasos a seguir (arriba de la tabla)
+# ---------------------------------------------------------------------------
+st.info(
+    "📋 **Pasos a seguir:**\n"
+    "1. Usa los filtros del panel lateral para encontrar los templates que deseas editar.\n"
+    "2. Edita directamente las celdas en la tabla.\n"
+    "3. Haz clic en **Detectar cambios** para comparar con la versión anterior.\n"
+    "4. Haz clic en **Descargar cambios** para obtener un Excel con las modificaciones resaltadas."
+)
+
+# ---------------------------------------------------------------------------
 # Tabla editable
 # ---------------------------------------------------------------------------
 if df_display.empty:
@@ -242,37 +253,13 @@ else:
         )
 
 # ---------------------------------------------------------------------------
-# Pasos a seguir
-# ---------------------------------------------------------------------------
-st.divider()
-st.info(
-    "📋 **Pasos a seguir:**\n"
-    "1. Usa los filtros del panel lateral para encontrar los templates que deseas editar.\n"
-    "2. Edita directamente las celdas en la tabla.\n"
-    "3. Haz clic en **Detectar cambios** para comparar con la versión anterior.\n"
-    "4. Haz clic en **Descargar cambios** para obtener un Excel con las modificaciones resaltadas."
-)
-
-# ---------------------------------------------------------------------------
 # Botones de acción
 # ---------------------------------------------------------------------------
-col1, col2, col3 = st.columns(3)
+st.divider()
+col1, col2 = st.columns(2)
 
-# --- Botón 1: Validar distribución ---
+# --- Botón 1: Detectar cambios ---
 with col1:
-    if st.button("✅ Validar distribución", use_container_width=True):
-        try:
-            alertas = validate_distribution(st.session_state.working_df)
-            if alertas:
-                for alerta in alertas:
-                    st.warning(alerta)
-            else:
-                st.success("Distribución correcta")
-        except Exception as e:
-            st.error(f"Error al validar distribución: {e}")
-
-# --- Botón 2: Detectar cambios ---
-with col2:
     if st.button("🔎 Detectar cambios", use_container_width=True):
         try:
             if version_seleccionada:
@@ -311,8 +298,8 @@ with col2:
         except Exception as e:
             st.error(f"Error al detectar cambios: {e}")
 
-# --- Botón 3: Descargar cambios ---
-with col3:
+# --- Botón 2: Descargar cambios ---
+with col2:
     if st.session_state.accumulated_changes:
         try:
             from openpyxl.styles import PatternFill
@@ -364,3 +351,28 @@ with col3:
             st.error(f"Error al generar archivo de descarga: {e}")
     else:
         st.info("No hay registros modificados para descargar")
+
+# ---------------------------------------------------------------------------
+# Resumen de registros modificados (por Caso de Uso, Audiencia, Producto)
+# ---------------------------------------------------------------------------
+if st.session_state.accumulated_changes:
+    st.divider()
+    st.subheader("📊 Registros modificados")
+
+    modified_tids = [str(k) for k in st.session_state.accumulated_changes.keys()]
+    df_modified = st.session_state.working_df[
+        st.session_state.working_df["template_id"].astype(str).isin(modified_tids)
+    ]
+
+    group_cols = []
+    for col in ["Casos de Uso", "AUDIENCIA", "Oferta"]:
+        if col in df_modified.columns:
+            group_cols.append(col)
+
+    if group_cols:
+        grouped = df_modified.groupby(group_cols).size().reset_index(name="Registros modificados")
+        for _, row in grouped.iterrows():
+            parts = [str(row[c]) for c in group_cols]
+            st.write(f"• **{', '.join(parts)}** — {row['Registros modificados']} registros modificados")
+    else:
+        st.write(f"Total: {len(modified_tids)} registros modificados")
