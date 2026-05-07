@@ -183,84 +183,98 @@ df_display = df_display[cols_primero + cols_resto]
 st.info(
     "📋 **Pasos a seguir:**\n"
     "1. Usa los filtros del panel lateral para encontrar los templates que deseas editar.\n"
-    "2. Edita directamente las celdas en la tabla.\n"
-    "3. Haz clic en **Detectar cambios** para comparar con la versión anterior.\n"
-    "4. Haz clic en **Descargar cambios** para obtener un Excel con las modificaciones resaltadas."
+    "2. Selecciona un registro de la tabla para editarlo.\n"
+    "3. Modifica los campos en el formulario y haz clic en **Guardar cambio**.\n"
+    "4. Usa **Descargar cambios** para obtener un Excel con las modificaciones resaltadas."
 )
 
 # ---------------------------------------------------------------------------
-# Tabla editable
+# Session state para edición por registro
+# ---------------------------------------------------------------------------
+if "editing_tid" not in st.session_state:
+    st.session_state.editing_tid = None
+
+# ---------------------------------------------------------------------------
+# Tabla de solo lectura con selección
 # ---------------------------------------------------------------------------
 if df_display.empty:
     st.info("No se encontraron templates con los criterios seleccionados.")
 else:
-    df_editado = st.data_editor(
+    # Mostrar tabla de solo lectura con selección de fila
+    event = st.dataframe(
         df_display,
-        num_rows="dynamic",
-        key="editor",
         use_container_width=True,
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="single-row",
+        key="tabla_seleccion",
     )
 
+    # Detectar fila seleccionada
+    selected_rows = event.selection.rows if event.selection else []
+
+    if selected_rows:
+        idx = selected_rows[0]
+        row_selected = df_display.iloc[idx]
+        tid = str(row_selected.get("template_id", ""))
+        st.session_state.editing_tid = tid
+
     # ------------------------------------------------------------------
-    # Detección de cambios inline — comparar editado vs ORIGINAL
+    # Formulario de edición del registro seleccionado
     # ------------------------------------------------------------------
-    ignored_columns = set(config.get("ignored_columns", []))
+    if st.session_state.editing_tid:
+        tid = st.session_state.editing_tid
+        # Obtener la fila actual (con cambios acumulados)
+        row_mask = df_display["template_id"].astype(str) == tid
+        if row_mask.any():
+            row_data = df_display[row_mask].iloc[0]
 
-    if df_editado is not None and not df_editado.empty:
-        # Construir df_original_display con las mismas columnas y filtros pero SIN cambios acumulados
-        df_orig_filtered = st.session_state.original_df.copy()
-        for col, val in filtros_activos.items():
-            if col in df_orig_filtered.columns:
-                df_orig_filtered = df_orig_filtered[df_orig_filtered[col].astype(str) == val]
-        for hcol in hidden_columns:
-            if hcol in df_orig_filtered.columns:
-                df_orig_filtered = df_orig_filtered.drop(columns=[hcol])
-        cols_p = [c for c in column_order_first if c in df_orig_filtered.columns]
-        cols_r = [c for c in df_orig_filtered.columns if c not in cols_p]
-        df_orig_filtered = df_orig_filtered[cols_p + cols_r]
+            st.divider()
+            st.subheader(f"✏️ Editando: {tid}")
 
-        # Comparar fila a fila entre df_editado y el original (sin cambios)
-        min_rows = min(len(df_editado), len(df_orig_filtered))
-        for i in range(min_rows):
-            row_editada = df_editado.iloc[i]
-            row_original = df_orig_filtered.iloc[i]
+            # Columnas editables (excluir las ignoradas y template_id)
+            editable_cols = [
+                c for c in df_display.columns
+                if c not in set(config.get("ignored_columns", [])) | {"template_id"}
+            ]
 
-            tid = str(row_editada.get("template_id", ""))
-            if not tid:
-                continue
+            with st.form(key=f"edit_form_{tid}"):
+                new_values = {}
+                for col in editable_cols:
+                    current_val = str(row_data[col]) if pd.notna(row_data[col]) else ""
+                    new_values[col] = st.text_input(col, value=current_val, key=f"input_{tid}_{col}")
 
-            for col in df_editado.columns:
-                if col in ignored_columns:
-                    continue
-                val_nuevo = row_editada[col]
-                val_original = row_original[col] if col in df_orig_filtered.columns else None
+                submitted = st.form_submit_button("💾 Guardar cambio", use_container_width=True)
 
-                if str(val_nuevo) != str(val_original):
-                    if tid not in st.session_state.accumulated_changes:
-                        st.session_state.accumulated_changes[tid] = {}
-                    st.session_state.accumulated_changes[tid][col] = val_nuevo
+                if submitted:
+                    # Guardar cambios en accumulated_changes
+                    original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
+                    if original_row_mask.any():
+                        original_row = st.session_state.original_df[original_row_mask].iloc[0]
+                    else:
+                        original_row = None
 
-        # Filas nuevas (agregadas por el usuario)
-        if len(df_editado) > len(df_orig_filtered):
-            for i in range(len(df_orig_filtered), len(df_editado)):
-                row_nueva = df_editado.iloc[i]
-                tid = str(row_nueva.get("template_id", f"new_{i}"))
-                if tid not in st.session_state.accumulated_changes:
-                    st.session_state.accumulated_changes[tid] = {}
-                for col in df_editado.columns:
-                    st.session_state.accumulated_changes[tid][col] = row_nueva[col]
+                    changes_made = False
+                    for col in editable_cols:
+                        new_val = new_values[col]
+                        orig_val = str(original_row[col]) if original_row is not None and col in original_row.index and pd.notna(original_row[col]) else ""
 
-        # Aplicar cambios acumulados de vuelta al working_df
-        for tid, changes in st.session_state.accumulated_changes.items():
-            mask = st.session_state.working_df["template_id"].astype(str) == str(tid)
-            for col, val in changes.items():
-                if col in st.session_state.working_df.columns:
-                    st.session_state.working_df.loc[mask, col] = val
+                        if new_val != orig_val:
+                            if tid not in st.session_state.accumulated_changes:
+                                st.session_state.accumulated_changes[tid] = {}
+                            st.session_state.accumulated_changes[tid][col] = new_val
+                            changes_made = True
+
+                    if changes_made:
+                        st.success(f"✅ Cambios guardados para {tid}")
+                        st.rerun()
+                    else:
+                        st.info("No se detectaron cambios respecto al original.")
 
     # Indicador de cambios pendientes
     if st.session_state.accumulated_changes:
         st.warning(
-            f"Hay {len(st.session_state.accumulated_changes)} registros modificados sin guardar"
+            f"Hay {len(st.session_state.accumulated_changes)} registros modificados pendientes de descarga"
         )
 
 # ---------------------------------------------------------------------------
