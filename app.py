@@ -242,10 +242,21 @@ else:
         )
 
 # ---------------------------------------------------------------------------
-# Botones de acción
+# Pasos a seguir
 # ---------------------------------------------------------------------------
 st.divider()
-col1, col2, col3, col4 = st.columns(4)
+st.info(
+    "📋 **Pasos a seguir:**\n"
+    "1. Usa los filtros del panel lateral para encontrar los templates que deseas editar.\n"
+    "2. Edita directamente las celdas en la tabla.\n"
+    "3. Haz clic en **Detectar cambios** para comparar con la versión anterior.\n"
+    "4. Haz clic en **Descargar cambios** para obtener un Excel con las modificaciones resaltadas."
+)
+
+# ---------------------------------------------------------------------------
+# Botones de acción
+# ---------------------------------------------------------------------------
+col1, col2, col3 = st.columns(3)
 
 # --- Botón 1: Validar distribución ---
 with col1:
@@ -260,23 +271,8 @@ with col1:
         except Exception as e:
             st.error(f"Error al validar distribución: {e}")
 
-# --- Botón 2: Guardar versión ---
+# --- Botón 2: Detectar cambios ---
 with col2:
-    if st.button("💾 Guardar versión", use_container_width=True):
-        try:
-            # Validar distribución primero (alerta pero no bloquea)
-            alertas = validate_distribution(st.session_state.working_df)
-            if alertas:
-                for alerta in alertas:
-                    st.warning(alerta)
-
-            ruta = save_version(st.session_state.working_df, config)
-            st.success(f"Versión guardada: {os.path.basename(ruta)}")
-        except Exception as e:
-            st.error(f"Error al guardar versión: {e}")
-
-# --- Botón 3: Detectar cambios ---
-with col3:
     if st.button("🔎 Detectar cambios", use_container_width=True):
         try:
             if version_seleccionada:
@@ -315,8 +311,8 @@ with col3:
         except Exception as e:
             st.error(f"Error al detectar cambios: {e}")
 
-# --- Botón 4: Descargar cambios ---
-with col4:
+# --- Botón 3: Descargar cambios ---
+with col3:
     if st.session_state.accumulated_changes:
         try:
             from openpyxl.styles import PatternFill
