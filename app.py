@@ -183,9 +183,9 @@ df_display = df_display[cols_primero + cols_resto]
 st.info(
     "📋 **Pasos a seguir:**\n"
     "1. Usa los filtros del panel lateral para encontrar los templates que deseas editar.\n"
-    "2. Selecciona un registro de la tabla para editarlo.\n"
-    "3. Modifica los campos en el formulario y haz clic en **Guardar cambio**.\n"
-    "4. Usa **Descargar cambios** para obtener un Excel con las modificaciones resaltadas."
+    "2. Haz clic en una fila de la tabla para editarla (se abre un popup).\n"
+    "3. Modifica los campos y haz clic en **Guardar cambio**.\n"
+    "4. Usa **Descargar cambios** para obtener un Excel con las modificaciones."
 )
 
 # ---------------------------------------------------------------------------
@@ -195,12 +195,65 @@ if "editing_tid" not in st.session_state:
     st.session_state.editing_tid = None
 
 # ---------------------------------------------------------------------------
+# Función de diálogo para editar un registro
+# ---------------------------------------------------------------------------
+@st.dialog("✏️ Editar registro", width="large")
+def edit_dialog(tid: str):
+    """Popup modal para editar los campos de un template."""
+    # Obtener fila actual con cambios acumulados
+    row_mask = st.session_state.working_df["template_id"].astype(str) == tid
+    if not row_mask.any():
+        st.error("No se encontró el registro.")
+        return
+
+    row_data = st.session_state.working_df[row_mask].iloc[0]
+    st.caption(f"Template: **{tid}**")
+
+    # Columnas editables
+    editable_cols = [
+        c for c in df_display.columns
+        if c not in set(config.get("ignored_columns", [])) | {"template_id"}
+    ]
+
+    # Mostrar campos en 2 columnas para aprovechar espacio
+    new_values = {}
+    col_pairs = [editable_cols[i:i+2] for i in range(0, len(editable_cols), 2)]
+    for pair in col_pairs:
+        cols = st.columns(len(pair))
+        for j, col_name in enumerate(pair):
+            current_val = str(row_data[col_name]) if col_name in row_data.index and pd.notna(row_data[col_name]) else ""
+            with cols[j]:
+                new_values[col_name] = st.text_area(col_name, value=current_val, height=68, key=f"dlg_{tid}_{col_name}")
+
+    st.divider()
+    if st.button("💾 Guardar cambio", use_container_width=True, type="primary"):
+        # Comparar contra original
+        original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
+        original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
+
+        changes_made = False
+        for col_name in editable_cols:
+            new_val = new_values[col_name]
+            orig_val = str(original_row[col_name]) if original_row is not None and col_name in original_row.index and pd.notna(original_row[col_name]) else ""
+
+            if new_val != orig_val:
+                if tid not in st.session_state.accumulated_changes:
+                    st.session_state.accumulated_changes[tid] = {}
+                st.session_state.accumulated_changes[tid][col_name] = new_val
+                changes_made = True
+
+        if changes_made:
+            st.session_state.editing_tid = None
+            st.rerun()
+        else:
+            st.info("No se detectaron cambios respecto al original.")
+
+# ---------------------------------------------------------------------------
 # Tabla de solo lectura con selección
 # ---------------------------------------------------------------------------
 if df_display.empty:
     st.info("No se encontraron templates con los criterios seleccionados.")
 else:
-    # Mostrar tabla de solo lectura con selección de fila
     event = st.dataframe(
         df_display,
         use_container_width=True,
@@ -210,66 +263,15 @@ else:
         key="tabla_seleccion",
     )
 
-    # Detectar fila seleccionada
+    # Detectar fila seleccionada y abrir diálogo
     selected_rows = event.selection.rows if event.selection else []
 
     if selected_rows:
         idx = selected_rows[0]
         row_selected = df_display.iloc[idx]
         tid = str(row_selected.get("template_id", ""))
-        st.session_state.editing_tid = tid
-
-    # ------------------------------------------------------------------
-    # Formulario de edición del registro seleccionado
-    # ------------------------------------------------------------------
-    if st.session_state.editing_tid:
-        tid = st.session_state.editing_tid
-        # Obtener la fila actual (con cambios acumulados)
-        row_mask = df_display["template_id"].astype(str) == tid
-        if row_mask.any():
-            row_data = df_display[row_mask].iloc[0]
-
-            st.divider()
-            st.subheader(f"✏️ Editando: {tid}")
-
-            # Columnas editables (excluir las ignoradas y template_id)
-            editable_cols = [
-                c for c in df_display.columns
-                if c not in set(config.get("ignored_columns", [])) | {"template_id"}
-            ]
-
-            with st.form(key=f"edit_form_{tid}"):
-                new_values = {}
-                for col in editable_cols:
-                    current_val = str(row_data[col]) if pd.notna(row_data[col]) else ""
-                    new_values[col] = st.text_input(col, value=current_val, key=f"input_{tid}_{col}")
-
-                submitted = st.form_submit_button("💾 Guardar cambio", use_container_width=True)
-
-                if submitted:
-                    # Guardar cambios en accumulated_changes
-                    original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
-                    if original_row_mask.any():
-                        original_row = st.session_state.original_df[original_row_mask].iloc[0]
-                    else:
-                        original_row = None
-
-                    changes_made = False
-                    for col in editable_cols:
-                        new_val = new_values[col]
-                        orig_val = str(original_row[col]) if original_row is not None and col in original_row.index and pd.notna(original_row[col]) else ""
-
-                        if new_val != orig_val:
-                            if tid not in st.session_state.accumulated_changes:
-                                st.session_state.accumulated_changes[tid] = {}
-                            st.session_state.accumulated_changes[tid][col] = new_val
-                            changes_made = True
-
-                    if changes_made:
-                        st.success(f"✅ Cambios guardados para {tid}")
-                        st.rerun()
-                    else:
-                        st.info("No se detectaron cambios respecto al original.")
+        if tid:
+            edit_dialog(tid)
 
     # Indicador de cambios pendientes
     if st.session_state.accumulated_changes:
