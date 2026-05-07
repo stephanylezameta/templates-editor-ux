@@ -34,13 +34,20 @@ st.set_page_config(page_title="Editor de Templates", layout="wide", page_icon="�
 st.markdown(
     """
     <style>
-        .main .block-container { padding-top: 1rem; padding-bottom: 1rem; }
-        h1, h2, h3 { color: #1a5276; }
-        h1 { font-size: 1.8rem; }
-        .stMetric label { font-size: 0.85rem; }
-        .stMetric [data-testid="stMetricValue"] { font-size: 1.4rem; color: #1a5276; }
+        .main .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; max-width: 100%; }
+        h1, h2, h3 { color: #1a5276; margin-bottom: 0.3rem; }
+        h1 { font-size: 1.5rem; }
+        h2 { font-size: 1.1rem; }
+        p, li, span, label, .stMarkdown { font-size: 0.85rem; }
+        .stMetric label { font-size: 0.75rem; }
+        .stMetric [data-testid="stMetricValue"] { font-size: 1.2rem; color: #1a5276; }
         div[data-testid="stSidebar"] { background-color: #f0f4f8; }
-        div[data-testid="stSidebar"] .block-container { padding-top: 1rem; }
+        div[data-testid="stSidebar"] .block-container { padding-top: 0.5rem; }
+        .stAlert { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+        .stDivider { margin: 0.3rem 0; }
+        div[data-testid="stVerticalBlock"] > div { gap: 0.4rem; }
+        .stDataFrame { font-size: 0.8rem; }
+        button[kind="primary"], button[kind="secondary"] { font-size: 0.8rem; padding: 0.3rem 0.8rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -181,11 +188,7 @@ df_display = df_display[cols_primero + cols_resto]
 # Pasos a seguir (arriba de la tabla)
 # ---------------------------------------------------------------------------
 st.info(
-    "📋 **Pasos a seguir:**\n"
-    "1. Usa los filtros del panel lateral para encontrar los templates que deseas editar.\n"
-    "2. Haz clic en una fila de la tabla para editarla (se abre un popup).\n"
-    "3. Modifica los campos y haz clic en **Guardar cambio**.\n"
-    "4. Usa **Descargar cambios** para obtener un Excel con las modificaciones."
+    "📋 **Pasos:** 1. Filtra en el panel lateral → 2. Clic en una fila para editar → 3. Guarda el cambio → 4. Descarga el Excel"
 )
 
 # ---------------------------------------------------------------------------
