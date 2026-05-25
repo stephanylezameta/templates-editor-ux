@@ -255,13 +255,10 @@ else:
                 for k, col_name in enumerate(group):
                     current_val = str(row[col_name]) if col_name in row.index and pd.notna(row[col_name]) else ""
                     with input_cols[k]:
-                        # Si es un campo de color, mostrar preview
-                        if "color" in col_name.lower() and is_color_code(current_val):
-                            st.markdown(render_color_preview(current_val), unsafe_allow_html=True)
                         new_values[col_name] = st.text_input(
                             col_name, value=current_val, key=f"row_{i}_{col_name}"
                         )
-                        # Preview de color si el usuario escribe un hex
+                        # Preview de color si el valor es un hex
                         if "color" in col_name.lower() and is_color_code(new_values[col_name]):
                             st.markdown(
                                 render_color_preview(new_values[col_name]),
