@@ -241,10 +241,9 @@ else:
         # Indicador visual si fue modificado
         modified_marker = " ✅" if tid in st.session_state.accumulated_changes else ""
 
-        # Resumen compacto de la fila
-        title_val = str(row.get("title", ""))[:40] if "title" in row.index else tid
-        detail_val = str(row.get("detail", ""))[:50] if "detail" in row.index else ""
-        label = f"**{title_val}** — {detail_val}{modified_marker}"
+        # Resumen compacto de la fila (mostrar Oferta + template_id)
+        oferta_val = str(row.get("Oferta", ""))[:50] if "Oferta" in row.index else ""
+        label = f"**{oferta_val}** — {tid}{modified_marker}"
 
         with st.expander(label, expanded=False):
             # Mostrar campos en 3 columnas
