@@ -303,7 +303,7 @@ else:
     for i, (idx, row) in enumerate(df_page.iterrows(), start=start_idx):
         tid = str(row.get("template_id", ""))
         # Indicador visual si fue modificado
-        modified_marker = " ✅" if tid in st.session_state.accumulated_changes else ""
+        modified_marker = "Modificado" if tid in st.session_state.accumulated_changes else ""
 
         # Resumen compacto de la fila (mostrar Oferta + template_id)
         oferta_val = str(row.get("Oferta", ""))[:50] if "Oferta" in row.index else ""
@@ -322,9 +322,8 @@ else:
                 input_cols = st.columns(len(group))
                 for k, col_name in enumerate(group):
                     current_val = str(row[col_name]) if col_name in row.index and pd.notna(row[col_name]) else ""
-                        with input_cols[k]:
+                    with input_cols[k]:
                         if col_name in ("detail", "title"):
-                            # Altura adaptada al contenido
                             lines = max(1, len(current_val) // 60 + 1)
                             h = min(max(40, lines * 22), 120)
                             new_values[col_name] = st.text_area(
