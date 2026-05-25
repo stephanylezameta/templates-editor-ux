@@ -28,7 +28,7 @@ from validator import validate_distribution
 # ---------------------------------------------------------------------------
 # Configuración de página y CSS
 # ---------------------------------------------------------------------------
-st.set_page_config(page_title="Editor de Templates", layout="wide", page_icon="📝")
+st.set_page_config(page_title="Editor de Templates", layout="wide")
 
 st.markdown(
     """
@@ -36,7 +36,7 @@ st.markdown(
         .main .block-container { padding-top: 0.2rem; padding-bottom: 0.2rem; max-width: 100%; }
         h1 { font-size: 12pt; color: #1a5276; margin-bottom: 0.2rem; }
         h2, h3 { font-size: 10pt; color: #1a5276; margin-bottom: 0.1rem; }
-        p, li, span, label, .stMarkdown, .stText { font-size: 9pt !important; }
+        p, li, span, label, .stMarkdown, .stText { font-size: large; }
         .stAlert { padding: 0.3rem 0.5rem; font-size: large; }
         div[data-testid="stSidebar"] { background-color: #f0f4f8; }
         div[data-testid="stVerticalBlock"] > div { gap: 0.1rem; }
@@ -45,7 +45,7 @@ st.markdown(
             padding: 0.15rem 0.3rem !important;
         }
         .stTextArea textarea { min-height: 2.5rem !important; resize: vertical; }
-        .stTextInput label, .stTextArea label { font-size: 8pt !important; margin-bottom: 0; }
+        .stTextInput label, .stTextArea label { font-size: large; margin-bottom: 0; }
         button { font-size: 12pt !important; padding: 0.15rem 0.4rem !important; }
         details { margin-bottom: 0.1rem !important; }
     </style>
