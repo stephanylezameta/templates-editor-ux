@@ -44,6 +44,7 @@ st.markdown(
             font-size: 9pt !important;
             padding: 0.15rem 0.3rem !important;
         }
+        .stTextArea textarea { min-height: 2.5rem !important; resize: vertical; }
         .stTextInput label, .stTextArea label { font-size: 8pt !important; margin-bottom: 0; }
         button { font-size: 9pt !important; padding: 0.15rem 0.4rem !important; }
         details { margin-bottom: 0.2rem !important; }
@@ -298,6 +299,11 @@ else:
         label = f"**{oferta_val}** — {tid}{modified_marker}"
 
         with st.expander(label, expanded=False):
+            # Botón guardar a la derecha (arriba)
+            _, btn_col = st.columns([5, 1])
+            with btn_col:
+                save_clicked = st.button("💾 Guardar", key=f"save_{i}_{tid}", type="primary", use_container_width=True)
+
             # Mostrar campos en 3 columnas
             new_values = {}
             col_groups = [editable_cols[j:j+3] for j in range(0, len(editable_cols), 3)]
@@ -306,17 +312,17 @@ else:
                 for k, col_name in enumerate(group):
                     current_val = str(row[col_name]) if col_name in row.index and pd.notna(row[col_name]) else ""
                     with input_cols[k]:
-                        if col_name == "detail":
+                        if col_name in ("detail", "title"):
                             new_values[col_name] = st.text_area(
-                                col_name, value=current_val, key=f"row_{i}_{tid}_{col_name}", height=80
+                                col_name, value=current_val, key=f"row_{i}_{tid}_{col_name}", height=68
                             )
                         else:
                             new_values[col_name] = st.text_input(
                                 col_name, value=current_val, key=f"row_{i}_{tid}_{col_name}"
                             )
 
-            # Botón guardar dentro del expander
-            if st.button("Guardar", key=f"save_{i}_{tid}", type="primary"):
+            # Guardar
+            if save_clicked:
                 original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
                 original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
 
