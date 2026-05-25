@@ -36,10 +36,18 @@ st.markdown(
     """
     <style>
         .main .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; max-width: 100%; }
-        h1 { font-size: 1.4rem; color: #1a5276; margin-bottom: 0.3rem; }
-        h2, h3 { font-size: 1rem; color: #1a5276; margin-bottom: 0.2rem; }
-        .stAlert { padding: 0.4rem 0.7rem; }
+        h1 { font-size: 12pt; color: #1a5276; margin-bottom: 0.3rem; }
+        h2, h3 { font-size: 10pt; color: #1a5276; margin-bottom: 0.2rem; }
+        p, li, span, label, .stMarkdown, .stText { font-size: 9pt !important; }
+        .stAlert { padding: 0.4rem 0.7rem; font-size: 9pt !important; }
         div[data-testid="stSidebar"] { background-color: #f0f4f8; }
+        div[data-testid="stVerticalBlock"] > div { gap: 0.2rem; }
+        .stTextInput input, .stTextArea textarea {
+            font-size: 9pt !important;
+            padding: 0.2rem 0.4rem !important;
+        }
+        .stTextInput label, .stTextArea label { font-size: 8pt !important; }
+        button { font-size: 9pt !important; padding: 0.2rem 0.5rem !important; }
         .color-swatch {
             display: inline-block;
             width: 18px;
@@ -197,97 +205,8 @@ if st.session_state.accumulated_changes:
     st.warning(f"✏️ {len(st.session_state.accumulated_changes)} registros modificados pendientes de descarga")
 
 # ---------------------------------------------------------------------------
-# Tabla con filas expandibles para edición (paginada)
+# Botones de acción (arriba)
 # ---------------------------------------------------------------------------
-if df_display.empty:
-    st.info("No se encontraron templates con los criterios seleccionados.")
-else:
-    editable_cols = [
-        c for c in df_display.columns
-        if c not in set(config.get("ignored_columns", [])) | {"template_id"}
-    ]
-
-    # Paginación
-    PAGE_SIZE = 15
-    total_rows = len(df_display)
-    total_pages = max(1, (total_rows + PAGE_SIZE - 1) // PAGE_SIZE)
-
-    if "current_page" not in st.session_state:
-        st.session_state.current_page = 0
-
-    # Controles de paginación
-    pag_left, pag_center, pag_right = st.columns([1, 2, 1])
-    with pag_left:
-        if st.button("◀ Anterior", disabled=st.session_state.current_page == 0):
-            st.session_state.current_page -= 1
-            st.rerun()
-    with pag_center:
-        st.markdown(
-            f"<div style='text-align:center'>Página **{st.session_state.current_page + 1}** de **{total_pages}** ({total_rows} registros)</div>",
-            unsafe_allow_html=True,
-        )
-    with pag_right:
-        if st.button("Siguiente ▶", disabled=st.session_state.current_page >= total_pages - 1):
-            st.session_state.current_page += 1
-            st.rerun()
-
-    # Slice de la página actual
-    start_idx = st.session_state.current_page * PAGE_SIZE
-    end_idx = min(start_idx + PAGE_SIZE, total_rows)
-    df_page = df_display.iloc[start_idx:end_idx]
-
-    for i, (idx, row) in enumerate(df_page.iterrows(), start=start_idx):
-        tid = str(row.get("template_id", ""))
-        # Indicador visual si fue modificado
-        modified_marker = " ✅" if tid in st.session_state.accumulated_changes else ""
-
-        # Resumen compacto de la fila (mostrar Oferta + template_id)
-        oferta_val = str(row.get("Oferta", ""))[:50] if "Oferta" in row.index else ""
-        label = f"**{oferta_val}** — {tid}{modified_marker}"
-
-        with st.expander(label, expanded=False):
-            # Mostrar campos en 3 columnas
-            new_values = {}
-            col_groups = [editable_cols[j:j+3] for j in range(0, len(editable_cols), 3)]
-            for group in col_groups:
-                input_cols = st.columns(len(group))
-                for k, col_name in enumerate(group):
-                    current_val = str(row[col_name]) if col_name in row.index and pd.notna(row[col_name]) else ""
-                    with input_cols[k]:
-                        new_values[col_name] = st.text_input(
-                            col_name, value=current_val, key=f"row_{i}_{col_name}"
-                        )
-                        # Preview de color si el valor es un hex
-                        if "color" in col_name.lower() and is_color_code(new_values[col_name]):
-                            st.markdown(
-                                render_color_preview(new_values[col_name]),
-                                unsafe_allow_html=True,
-                            )
-
-            # Botón guardar dentro del expander
-            if st.button("💾 Guardar cambio", key=f"save_{i}", type="primary"):
-                original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
-                original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
-
-                changes_made = False
-                for col_name in editable_cols:
-                    new_val = new_values[col_name]
-                    orig_val = str(original_row[col_name]) if original_row is not None and col_name in original_row.index and pd.notna(original_row[col_name]) else ""
-                    if new_val != orig_val:
-                        if tid not in st.session_state.accumulated_changes:
-                            st.session_state.accumulated_changes[tid] = {}
-                        st.session_state.accumulated_changes[tid][col_name] = new_val
-                        changes_made = True
-
-                if changes_made:
-                    st.rerun()
-                else:
-                    st.info("Sin cambios respecto al original.")
-
-# ---------------------------------------------------------------------------
-# Botones de acción
-# ---------------------------------------------------------------------------
-st.divider()
 col1, col2 = st.columns(2)
 
 with col1:
@@ -364,6 +283,97 @@ with col2:
             st.error(f"Error al generar archivo de descarga: {e}")
     else:
         st.info("No hay registros modificados para descargar")
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# Tabla con filas expandibles para edición (paginada)
+# ---------------------------------------------------------------------------
+if df_display.empty:
+    st.info("No se encontraron templates con los criterios seleccionados.")
+else:
+    editable_cols = [
+        c for c in df_display.columns
+        if c not in set(config.get("ignored_columns", [])) | {"template_id"}
+    ]
+
+    # Paginación
+    PAGE_SIZE = 15
+    total_rows = len(df_display)
+    total_pages = max(1, (total_rows + PAGE_SIZE - 1) // PAGE_SIZE)
+
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = 0
+
+    # Slice de la página actual
+    start_idx = st.session_state.current_page * PAGE_SIZE
+    end_idx = min(start_idx + PAGE_SIZE, total_rows)
+    df_page = df_display.iloc[start_idx:end_idx]
+
+    for i, (idx, row) in enumerate(df_page.iterrows(), start=start_idx):
+        tid = str(row.get("template_id", ""))
+        # Indicador visual si fue modificado
+        modified_marker = " ✅" if tid in st.session_state.accumulated_changes else ""
+
+        # Resumen compacto de la fila (mostrar Oferta + template_id)
+        oferta_val = str(row.get("Oferta", ""))[:50] if "Oferta" in row.index else ""
+        label = f"**{oferta_val}** — {tid}{modified_marker}"
+
+        with st.expander(label, expanded=False):
+            # Mostrar campos en 3 columnas
+            new_values = {}
+            col_groups = [editable_cols[j:j+3] for j in range(0, len(editable_cols), 3)]
+            for group in col_groups:
+                input_cols = st.columns(len(group))
+                for k, col_name in enumerate(group):
+                    current_val = str(row[col_name]) if col_name in row.index and pd.notna(row[col_name]) else ""
+                    with input_cols[k]:
+                        new_values[col_name] = st.text_input(
+                            col_name, value=current_val, key=f"row_{i}_{col_name}"
+                        )
+                        # Preview de color solo para el campo "color"
+                        if col_name.lower() == "color" and is_color_code(new_values[col_name]):
+                            st.markdown(
+                                render_color_preview(new_values[col_name]),
+                                unsafe_allow_html=True,
+                            )
+
+            # Botón guardar dentro del expander
+            if st.button("💾 Guardar cambio", key=f"save_{i}", type="primary"):
+                original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
+                original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
+
+                changes_made = False
+                for col_name in editable_cols:
+                    new_val = new_values[col_name]
+                    orig_val = str(original_row[col_name]) if original_row is not None and col_name in original_row.index and pd.notna(original_row[col_name]) else ""
+                    if new_val != orig_val:
+                        if tid not in st.session_state.accumulated_changes:
+                            st.session_state.accumulated_changes[tid] = {}
+                        st.session_state.accumulated_changes[tid][col_name] = new_val
+                        changes_made = True
+
+                if changes_made:
+                    st.rerun()
+                else:
+                    st.info("Sin cambios respecto al original.")
+
+    # Controles de paginación (abajo)
+    st.divider()
+    pag_left, pag_center, pag_right = st.columns([1, 2, 1])
+    with pag_left:
+        if st.button("◀ Anterior", disabled=st.session_state.current_page == 0, key="pag_prev"):
+            st.session_state.current_page -= 1
+            st.rerun()
+    with pag_center:
+        st.markdown(
+            f"<div style='text-align:center'>Página **{st.session_state.current_page + 1}** de **{total_pages}** ({total_rows} registros)</div>",
+            unsafe_allow_html=True,
+        )
+    with pag_right:
+        if st.button("Siguiente ▶", disabled=st.session_state.current_page >= total_pages - 1, key="pag_next"):
+            st.session_state.current_page += 1
+            st.rerun()
 
 # ---------------------------------------------------------------------------
 # Resumen de registros modificados
