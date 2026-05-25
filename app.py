@@ -41,19 +41,28 @@ st.markdown(
         div[data-testid="stSidebar"] { background-color: #f0f4f8; }
         div[data-testid="stVerticalBlock"] > div { gap: 0.1rem; }
         .stTextInput input, .stTextArea textarea {
-            font-size: 12pt !important;
+            font-size: 9pt !important;
             padding: 0.15rem 0.3rem !important;
         }
-        .stTextArea textarea { min-height: 2.5rem !important; resize: vertical; }
-        .stTextInput label, .stTextArea label { font-size: large; margin-bottom: 0; }
-        button { font-size: 12pt !important; padding: 0.15rem 0.4rem !important; }
+        .stTextArea textarea { min-height: 1.5rem !important; height: auto !important; resize: vertical; overflow-y: hidden; }
+        .stTextInput input { height: 1.8rem !important; }
+        .stTextInput label, .stTextArea label { font-size: 8pt !important; margin-bottom: 0; }
+        button { font-size: 9pt !important; padding: 0.15rem 0.4rem !important; }
         details { margin-bottom: 0.1rem !important; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.title("Editor de Wording")
+# Título + Pasos en la misma línea
+_title_col, _pasos_col = st.columns([1, 3])
+with _title_col:
+    st.title("Editor de Wording")
+with _pasos_col:
+    st.markdown(
+        "<p style='margin-top:0.8rem; font-size:9pt; color:#555;'>📋 <b>Pasos:</b> Filtra → Expande una fila para editar → Guarda → Descarga el Excel</p>",
+        unsafe_allow_html=True,
+    )
 
 # ---------------------------------------------------------------------------
 # Session state — inicialización
@@ -123,7 +132,7 @@ st.session_state.working_df = working_df
 # ---------------------------------------------------------------------------
 # Sidebar — Filtros
 # ---------------------------------------------------------------------------
-st.sidebar.header("🔍 Filtros")
+st.sidebar.header("Filtros")
 
 filter_columns = config.get("filter_columns", [])
 filtros_activos: dict[str, str] = {}
@@ -162,11 +171,6 @@ for hcol in hidden_columns:
 cols_primero = [c for c in column_order_first if c in df_display.columns]
 cols_resto = [c for c in df_display.columns if c not in cols_primero]
 df_display = df_display[cols_primero + cols_resto]
-
-# ---------------------------------------------------------------------------
-# Pasos a seguir
-# ---------------------------------------------------------------------------
-st.info("**Pasos:** Filtra → Expande una fila para editar → Guarda → Descarga el Excel")
 
 # ---------------------------------------------------------------------------
 # Indicador de cambios
@@ -318,10 +322,13 @@ else:
                 input_cols = st.columns(len(group))
                 for k, col_name in enumerate(group):
                     current_val = str(row[col_name]) if col_name in row.index and pd.notna(row[col_name]) else ""
-                    with input_cols[k]:
+                        with input_cols[k]:
                         if col_name in ("detail", "title"):
+                            # Altura adaptada al contenido
+                            lines = max(1, len(current_val) // 60 + 1)
+                            h = min(max(40, lines * 22), 120)
                             new_values[col_name] = st.text_area(
-                                col_name, value=current_val, key=f"row_{i}_{tid}_{col_name}", height=68
+                                col_name, value=current_val, key=f"row_{i}_{tid}_{col_name}", height=h
                             )
                         else:
                             new_values[col_name] = st.text_input(
