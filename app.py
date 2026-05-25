@@ -197,7 +197,7 @@ if st.session_state.accumulated_changes:
     st.warning(f"✏️ {len(st.session_state.accumulated_changes)} registros modificados pendientes de descarga")
 
 # ---------------------------------------------------------------------------
-# Tabla con filas expandibles para edición
+# Tabla con filas expandibles para edición (paginada)
 # ---------------------------------------------------------------------------
 if df_display.empty:
     st.info("No se encontraron templates con los criterios seleccionados.")
@@ -207,7 +207,36 @@ else:
         if c not in set(config.get("ignored_columns", [])) | {"template_id"}
     ]
 
-    for i, (idx, row) in enumerate(df_display.iterrows()):
+    # Paginación
+    PAGE_SIZE = 15
+    total_rows = len(df_display)
+    total_pages = max(1, (total_rows + PAGE_SIZE - 1) // PAGE_SIZE)
+
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = 0
+
+    # Controles de paginación
+    pag_left, pag_center, pag_right = st.columns([1, 2, 1])
+    with pag_left:
+        if st.button("◀ Anterior", disabled=st.session_state.current_page == 0):
+            st.session_state.current_page -= 1
+            st.rerun()
+    with pag_center:
+        st.markdown(
+            f"<div style='text-align:center'>Página **{st.session_state.current_page + 1}** de **{total_pages}** ({total_rows} registros)</div>",
+            unsafe_allow_html=True,
+        )
+    with pag_right:
+        if st.button("Siguiente ▶", disabled=st.session_state.current_page >= total_pages - 1):
+            st.session_state.current_page += 1
+            st.rerun()
+
+    # Slice de la página actual
+    start_idx = st.session_state.current_page * PAGE_SIZE
+    end_idx = min(start_idx + PAGE_SIZE, total_rows)
+    df_page = df_display.iloc[start_idx:end_idx]
+
+    for i, (idx, row) in enumerate(df_page.iterrows(), start=start_idx):
         tid = str(row.get("template_id", ""))
         # Indicador visual si fue modificado
         modified_marker = " ✅" if tid in st.session_state.accumulated_changes else ""
