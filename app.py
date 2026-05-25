@@ -9,7 +9,6 @@ Punto de entrada de la aplicación. Diseño de página única con tabs:
 import io
 import os
 import sys
-import re
 
 import streamlit as st
 import pandas as pd
@@ -48,15 +47,6 @@ st.markdown(
         }
         .stTextInput label, .stTextArea label { font-size: 8pt !important; }
         button { font-size: 9pt !important; padding: 0.2rem 0.5rem !important; }
-        .color-swatch {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border-radius: 3px;
-            border: 1px solid #ccc;
-            vertical-align: middle;
-            margin-right: 6px;
-        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -179,19 +169,6 @@ for hcol in hidden_columns:
 cols_primero = [c for c in column_order_first if c in df_display.columns]
 cols_resto = [c for c in df_display.columns if c not in cols_primero]
 df_display = df_display[cols_primero + cols_resto]
-
-# ---------------------------------------------------------------------------
-# Helper: detectar si un valor es un código de color hex
-# ---------------------------------------------------------------------------
-HEX_COLOR_RE = re.compile(r'^#(?:[0-9a-fA-F]{3}){1,2}$')
-
-def is_color_code(val: str) -> bool:
-    return bool(HEX_COLOR_RE.match(val.strip())) if val else False
-
-def render_color_preview(val: str) -> str:
-    """Retorna HTML con el swatch de color + código."""
-    val = val.strip()
-    return f'<span class="color-swatch" style="background-color:{val};"></span><code>{val}</code>'
 
 # ---------------------------------------------------------------------------
 # Pasos a seguir
@@ -331,12 +308,6 @@ else:
                         new_values[col_name] = st.text_input(
                             col_name, value=current_val, key=f"row_{i}_{col_name}"
                         )
-                        # Preview de color solo para el campo "color"
-                        if col_name.lower() == "color" and is_color_code(new_values[col_name]):
-                            st.markdown(
-                                render_color_preview(new_values[col_name]),
-                                unsafe_allow_html=True,
-                            )
 
             # Botón guardar dentro del expander
             if st.button("💾 Guardar cambio", key=f"save_{i}", type="primary"):
