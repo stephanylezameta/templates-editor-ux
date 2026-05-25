@@ -1,14 +1,15 @@
 """
 app.py — Interfaz Streamlit para el Editor de Templates.
 
-Punto de entrada de la aplicación. Carga datos, aplica autocompletado,
-gestiona filtros, edición inline con acumulación de cambios entre filtros,
-validación de distribución, guardado de versiones y descarga de cambios.
+Punto de entrada de la aplicación. Diseño de página única con tabs:
+- Tab 1: Tabla con edición inline por fila (expandible)
+- Tab 2: Descarga y resumen de cambios
 """
 
 import io
 import os
 import sys
+import re
 
 import streamlit as st
 import pandas as pd
@@ -27,34 +28,27 @@ from mapper import autocomplete
 from validator import validate_distribution
 
 # ---------------------------------------------------------------------------
-# Configuración de página y CSS corporativo
+# Configuración de página y CSS
 # ---------------------------------------------------------------------------
 st.set_page_config(page_title="Editor de Templates", layout="wide", page_icon="📝")
 
 st.markdown(
     """
     <style>
-        .main .block-container { padding-top: 0.3rem; padding-bottom: 0.3rem; max-width: 100%; }
-        h1, h2, h3 { color: #1a5276; margin-bottom: 0.2rem; }
-        h1 { font-size: 1.3rem; }
-        h2 { font-size: 1rem; }
-        p, li, span, label, .stMarkdown, .stText { font-size: 0.78rem !important; }
-        .stMetric label { font-size: 0.7rem; }
-        .stMetric [data-testid="stMetricValue"] { font-size: 1rem; color: #1a5276; }
+        .main .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; max-width: 100%; }
+        h1 { font-size: 1.4rem; color: #1a5276; margin-bottom: 0.3rem; }
+        h2, h3 { font-size: 1rem; color: #1a5276; margin-bottom: 0.2rem; }
+        .stAlert { padding: 0.4rem 0.7rem; }
         div[data-testid="stSidebar"] { background-color: #f0f4f8; }
-        div[data-testid="stSidebar"] .block-container { padding-top: 0.5rem; }
-        .stAlert { padding: 0.4rem 0.6rem; font-size: 0.75rem !important; }
-        div[data-testid="stVerticalBlock"] > div { gap: 0.2rem; }
-        .stDataFrame { font-size: 0.75rem !important; }
-        /* Inputs y text areas más compactos en el dialog */
-        .stTextInput input, .stTextArea textarea {
-            font-size: 0.78rem !important;
-            padding: 0.25rem 0.4rem !important;
-            min-height: unset !important;
+        .color-swatch {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            vertical-align: middle;
+            margin-right: 6px;
         }
-        .stTextArea textarea { height: 2.2rem !important; resize: vertical; }
-        .stTextInput label, .stTextArea label { font-size: 0.72rem !important; margin-bottom: 0.1rem; }
-        button { font-size: 0.78rem !important; padding: 0.25rem 0.6rem !important; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -68,7 +62,7 @@ st.title("📝 Editor de Templates")
 if "original_df" not in st.session_state:
     st.session_state.original_df = None
 if "accumulated_changes" not in st.session_state:
-    st.session_state.accumulated_changes = {}  # {template_id: {col: new_val}}
+    st.session_state.accumulated_changes = {}
 if "report" not in st.session_state:
     st.session_state.report = None
 if "working_df" not in st.session_state:
@@ -93,26 +87,21 @@ if st.session_state.original_df is None:
         st.error(f"Error al cargar resultado.xlsx: {e}")
         st.stop()
 
-    # Autocompletado de campos vacíos desde los propios datos
     ignored = config.get("ignored_columns", [])
     df_raw = autocomplete(df_raw, ignored_columns=ignored)
-
     st.session_state.original_df = df_raw.copy()
 
-    # Eliminar columnas ignoradas al cargar
     drop_cols = config.get("drop_columns", [])
     for col in drop_cols:
         if col in st.session_state.original_df.columns:
             st.session_state.original_df = st.session_state.original_df.drop(columns=[col])
 
-    # Filtrar solo scenarios permitidos
     allowed = config.get("allowed_scenarios")
     if allowed and "scenario_id" in st.session_state.original_df.columns:
         st.session_state.original_df = st.session_state.original_df[
             st.session_state.original_df["scenario_id"].astype(str).isin([str(s) for s in allowed])
         ].reset_index(drop=True)
 
-    # Excluir registros con patrones ignorados en template_id (ej. ITM#)
     exclude_patterns = config.get("exclude_template_patterns", [])
     if exclude_patterns and "template_id" in st.session_state.original_df.columns:
         for pattern in exclude_patterns:
@@ -146,7 +135,6 @@ for col in filter_columns:
         if seleccion != "Todos":
             filtros_activos[col] = seleccion
 
-# Aplicar filtros al working_df
 df_filtrado = working_df.copy()
 for col, val in filtros_activos.items():
     df_filtrado = df_filtrado[df_filtrado[col].astype(str) == val]
@@ -161,134 +149,115 @@ versiones = list_versions(config)
 version_seleccionada = None
 if versiones:
     version_seleccionada = st.sidebar.selectbox(
-        "Versión anterior",
-        versiones,
-        format_func=lambda x: os.path.basename(x),
+        "Versión anterior", versiones, format_func=lambda x: os.path.basename(x),
     )
 else:
     st.sidebar.info("No hay versiones guardadas")
 
-# ---------------------------------------------------------------------------
-# Sidebar — Contador de cambios
-# ---------------------------------------------------------------------------
 st.sidebar.header("✏️ Cambios")
 st.sidebar.metric("Registros modificados", len(st.session_state.accumulated_changes))
 
 # ---------------------------------------------------------------------------
-# Área principal — Preparar DataFrame para edición
+# Preparar DataFrame para mostrar
 # ---------------------------------------------------------------------------
 hidden_columns = config.get("hidden_columns", ["event"])
 column_order_first = config.get("column_order", ["title", "detail"])
 
-# Ocultar columnas (ej. event)
 df_display = df_filtrado.copy()
 for hcol in hidden_columns:
     if hcol in df_display.columns:
         df_display = df_display.drop(columns=[hcol])
 
-# Reordenar: title y detail primero, luego el resto
 cols_primero = [c for c in column_order_first if c in df_display.columns]
 cols_resto = [c for c in df_display.columns if c not in cols_primero]
 df_display = df_display[cols_primero + cols_resto]
 
 # ---------------------------------------------------------------------------
-# Pasos a seguir (arriba de la tabla)
+# Helper: detectar si un valor es un código de color hex
 # ---------------------------------------------------------------------------
-st.info(
-    "📋 **Pasos:** 1. Filtra en el panel lateral → 2. Clic en una fila para editar a la derecha → 3. Guarda el cambio → 4. Descarga el Excel"
-)
+HEX_COLOR_RE = re.compile(r'^#(?:[0-9a-fA-F]{3}){1,2}$')
+
+def is_color_code(val: str) -> bool:
+    return bool(HEX_COLOR_RE.match(val.strip())) if val else False
+
+def render_color_preview(val: str) -> str:
+    """Retorna HTML con el swatch de color + código."""
+    val = val.strip()
+    return f'<span class="color-swatch" style="background-color:{val};"></span><code>{val}</code>'
 
 # ---------------------------------------------------------------------------
-# Session state para edición por registro
+# Pasos a seguir
 # ---------------------------------------------------------------------------
-if "editing_tid" not in st.session_state:
-    st.session_state.editing_tid = None
+st.info("📋 **Pasos:** Filtra → Expande una fila para editar → Guarda → Descarga el Excel")
 
 # ---------------------------------------------------------------------------
-# Layout principal: Tabla (izquierda) + Editor (derecha)
+# Indicador de cambios
+# ---------------------------------------------------------------------------
+if st.session_state.accumulated_changes:
+    st.warning(f"✏️ {len(st.session_state.accumulated_changes)} registros modificados pendientes de descarga")
+
+# ---------------------------------------------------------------------------
+# Tabla con filas expandibles para edición
 # ---------------------------------------------------------------------------
 if df_display.empty:
     st.info("No se encontraron templates con los criterios seleccionados.")
 else:
-    col_tabla, col_editor = st.columns([3, 2])
+    editable_cols = [
+        c for c in df_display.columns
+        if c not in set(config.get("ignored_columns", [])) | {"template_id"}
+    ]
 
-    with col_tabla:
-        event = st.dataframe(
-            df_display,
-            use_container_width=True,
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="single-row",
-            key="tabla_seleccion",
-            height=400,
-        )
+    for i, (idx, row) in enumerate(df_display.iterrows()):
+        tid = str(row.get("template_id", ""))
+        # Indicador visual si fue modificado
+        modified_marker = " ✅" if tid in st.session_state.accumulated_changes else ""
 
-        # Detectar fila seleccionada
-        selected_rows = event.selection.rows if event.selection else []
-        if selected_rows:
-            idx = selected_rows[0]
-            row_selected = df_display.iloc[idx]
-            tid = str(row_selected.get("template_id", ""))
-            if tid:
-                st.session_state.editing_tid = tid
+        # Resumen compacto de la fila
+        title_val = str(row.get("title", ""))[:40] if "title" in row.index else tid
+        detail_val = str(row.get("detail", ""))[:50] if "detail" in row.index else ""
+        label = f"**{title_val}** — {detail_val}{modified_marker}"
 
-    with col_editor:
-        if st.session_state.editing_tid:
-            tid = st.session_state.editing_tid
-            row_mask = st.session_state.working_df["template_id"].astype(str) == tid
-            if row_mask.any():
-                row_data = st.session_state.working_df[row_mask].iloc[0]
+        with st.expander(label, expanded=False):
+            # Mostrar campos en 3 columnas
+            new_values = {}
+            col_groups = [editable_cols[j:j+3] for j in range(0, len(editable_cols), 3)]
+            for group in col_groups:
+                input_cols = st.columns(len(group))
+                for k, col_name in enumerate(group):
+                    current_val = str(row[col_name]) if col_name in row.index and pd.notna(row[col_name]) else ""
+                    with input_cols[k]:
+                        # Si es un campo de color, mostrar preview
+                        if "color" in col_name.lower() and is_color_code(current_val):
+                            st.markdown(render_color_preview(current_val), unsafe_allow_html=True)
+                        new_values[col_name] = st.text_input(
+                            col_name, value=current_val, key=f"row_{i}_{col_name}"
+                        )
+                        # Preview de color si el usuario escribe un hex
+                        if "color" in col_name.lower() and is_color_code(new_values[col_name]):
+                            st.markdown(
+                                render_color_preview(new_values[col_name]),
+                                unsafe_allow_html=True,
+                            )
 
-                # Header con botón guardar
-                h_left, h_right = st.columns([2, 1])
-                with h_left:
-                    st.markdown(f"✏️ **{tid}**")
-                with h_right:
-                    save_clicked = st.button("💾 Guardar", use_container_width=True, type="primary")
+            # Botón guardar dentro del expander
+            if st.button("💾 Guardar cambio", key=f"save_{i}", type="primary"):
+                original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
+                original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
 
-                # Columnas editables
-                editable_cols = [
-                    c for c in df_display.columns
-                    if c not in set(config.get("ignored_columns", [])) | {"template_id"}
-                ]
+                changes_made = False
+                for col_name in editable_cols:
+                    new_val = new_values[col_name]
+                    orig_val = str(original_row[col_name]) if original_row is not None and col_name in original_row.index and pd.notna(original_row[col_name]) else ""
+                    if new_val != orig_val:
+                        if tid not in st.session_state.accumulated_changes:
+                            st.session_state.accumulated_changes[tid] = {}
+                        st.session_state.accumulated_changes[tid][col_name] = new_val
+                        changes_made = True
 
-                # Campos en 2 columnas compactas
-                new_values = {}
-                col_pairs = [editable_cols[i:i+2] for i in range(0, len(editable_cols), 2)]
-                for pair in col_pairs:
-                    input_cols = st.columns(len(pair))
-                    for j, col_name in enumerate(pair):
-                        current_val = str(row_data[col_name]) if col_name in row_data.index and pd.notna(row_data[col_name]) else ""
-                        with input_cols[j]:
-                            new_values[col_name] = st.text_input(col_name, value=current_val, key=f"edit_{tid}_{col_name}")
-
-                # Guardar
-                if save_clicked:
-                    original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
-                    original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
-
-                    changes_made = False
-                    for col_name in editable_cols:
-                        new_val = new_values[col_name]
-                        orig_val = str(original_row[col_name]) if original_row is not None and col_name in original_row.index and pd.notna(original_row[col_name]) else ""
-                        if new_val != orig_val:
-                            if tid not in st.session_state.accumulated_changes:
-                                st.session_state.accumulated_changes[tid] = {}
-                            st.session_state.accumulated_changes[tid][col_name] = new_val
-                            changes_made = True
-
-                    if changes_made:
-                        st.rerun()
-                    else:
-                        st.info("Sin cambios.")
-        else:
-            st.markdown("👈 Selecciona una fila para editar")
-
-    # Indicador de cambios pendientes
-    if st.session_state.accumulated_changes:
-        st.warning(
-            f"{len(st.session_state.accumulated_changes)} registros modificados pendientes de descarga"
-        )
+                if changes_made:
+                    st.rerun()
+                else:
+                    st.info("Sin cambios respecto al original.")
 
 # ---------------------------------------------------------------------------
 # Botones de acción
@@ -296,7 +265,6 @@ else:
 st.divider()
 col1, col2 = st.columns(2)
 
-# --- Botón 1: Detectar cambios ---
 with col1:
     if st.button("🔎 Detectar cambios", use_container_width=True):
         try:
@@ -314,54 +282,36 @@ with col1:
                         f"{resumen['added']} agregados, "
                         f"{resumen['deleted']} eliminados"
                     )
-
                     if report.modified:
                         with st.expander(f"📝 Modificados ({resumen['modified']})"):
                             for change in report.modified:
                                 st.markdown(f"**{change.template_id}**")
                                 for fc in change.field_changes:
                                     st.text(f"  {fc.field}: {fc.old_value} → {fc.new_value}")
-
-                    if report.added:
-                        with st.expander(f"➕ Agregados ({resumen['added']})"):
-                            for change in report.added:
-                                st.text(change.template_id)
-
-                    if report.deleted:
-                        with st.expander(f"➖ Eliminados ({resumen['deleted']})"):
-                            for change in report.deleted:
-                                st.text(change.template_id)
             else:
                 st.info("No hay versión anterior seleccionada para comparar.")
         except Exception as e:
             st.error(f"Error al detectar cambios: {e}")
 
-# --- Botón 2: Descargar cambios ---
 with col2:
     if st.session_state.accumulated_changes:
         try:
             from openpyxl.styles import PatternFill
 
-            # Columnas fijas que siempre aparecen
             FIXED_COLS = ["Casos de Uso", "AUDIENCIA", "Oferta", "template_id"]
-
-            # Recopilar columnas modificadas
             changed_cols = set()
             for tid, cols in st.session_state.accumulated_changes.items():
                 changed_cols.update(cols.keys())
 
-            # Columnas finales: fijas + solo las que cambiaron (sin duplicar)
             export_cols = FIXED_COLS + [c for c in changed_cols if c not in FIXED_COLS]
             export_cols = [c for c in export_cols if c in st.session_state.working_df.columns]
 
-            # Filtrar solo registros modificados
             df_cambios = st.session_state.working_df[
                 st.session_state.working_df["template_id"]
                 .astype(str)
                 .isin([str(k) for k in st.session_state.accumulated_changes.keys()])
             ][export_cols].copy()
 
-            # Escribir Excel con resaltado amarillo en celdas modificadas
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
                 df_cambios.to_excel(writer, index=False, sheet_name="Cambios")
@@ -391,7 +341,7 @@ with col2:
         st.info("No hay registros modificados para descargar")
 
 # ---------------------------------------------------------------------------
-# Resumen de registros modificados (por Caso de Uso, Audiencia, Producto)
+# Resumen de registros modificados
 # ---------------------------------------------------------------------------
 if st.session_state.accumulated_changes:
     st.divider()
