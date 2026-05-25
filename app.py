@@ -144,17 +144,8 @@ st.sidebar.metric("Templates mostrados", len(df_filtrado))
 # ---------------------------------------------------------------------------
 # Sidebar — Versiones
 # ---------------------------------------------------------------------------
-st.sidebar.header("📂 Versiones")
-versiones = list_versions(config)
-version_seleccionada = None
-if versiones:
-    version_seleccionada = st.sidebar.selectbox(
-        "Versión anterior", versiones, format_func=lambda x: os.path.basename(x),
-    )
-else:
-    st.sidebar.info("No hay versiones guardadas")
 
-st.sidebar.header("✏️ Cambios")
+st.sidebar.header("Cambios")
 st.sidebar.metric("Registros modificados", len(st.session_state.accumulated_changes))
 
 # ---------------------------------------------------------------------------
