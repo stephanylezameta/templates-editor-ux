@@ -60,7 +60,7 @@ with _title_col:
     st.title("Editor de Wording")
 with _pasos_col:
     st.markdown(
-        "<p style='margin-top:0.8rem; font-size:9pt; color:#555;'>📋 <b>Pasos:</b> Filtra → Expande una fila para editar → Guarda → Descarga el Excel</p>",
+        "<p style='margin-top:0.8rem; font-size:12pt; color:#64b4e6;'><b>Pasos:</b> Filtra → Expande una fila para editar → Guarda → Descarga el Excel</p>",
         unsafe_allow_html=True,
     )
 
@@ -218,7 +218,7 @@ with col1:
                         f"{resumen['deleted']} eliminados"
                     )
                     if report.modified:
-                        with st.expander(f"📝 Modificados ({resumen['modified']})"):
+                        with st.expander(f'Modificados ({resumen['modified']})"):
                             for change in report.modified:
                                 st.markdown(f"**{change.template_id}**")
                                 for fc in change.field_changes:
