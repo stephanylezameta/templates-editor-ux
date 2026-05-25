@@ -37,7 +37,7 @@ st.markdown(
         h1 { font-size: 12pt; color: #1a5276; margin-bottom: 0.2rem; }
         h2, h3 { font-size: 10pt; color: #1a5276; margin-bottom: 0.1rem; }
         p, li, span, label, .stMarkdown, .stText { font-size: 9pt !important; }
-        .stAlert { padding: 0.3rem 0.5rem; font-size: 9pt !important; }
+        .stAlert { padding: 0.3rem 0.5rem; font-size: large; }
         div[data-testid="stSidebar"] { background-color: #f0f4f8; }
         div[data-testid="stVerticalBlock"] > div { gap: 0.1rem; }
         .stTextInput input, .stTextArea textarea {
