@@ -187,7 +187,7 @@ if st.session_state.accumulated_changes:
 col1, col2 = st.columns(2)
 
 with col1:
-    if st.button("🔎 Detectar cambios", use_container_width=True):
+    if st.button("Detectar cambios", use_container_width=True):
         try:
             if version_seleccionada:
                 df_anterior = load_version(version_seleccionada)
@@ -310,7 +310,7 @@ else:
                         )
 
             # Botón guardar dentro del expander
-            if st.button("💾 Guardar cambio", key=f"save_{i}_{tid}", type="primary"):
+            if st.button("Guardar", key=f"save_{i}_{tid}", type="primary"):
                 original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
                 original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
 
