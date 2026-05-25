@@ -264,6 +264,30 @@ with col2:
         st.info("No hay registros modificados para descargar")
 
 st.divider()
+# ---------------------------------------------------------------------------
+# Resumen de registros modificados
+# ---------------------------------------------------------------------------
+if st.session_state.accumulated_changes:
+    st.divider()
+    st.subheader("Registros modificados")
+
+    modified_tids = [str(k) for k in st.session_state.accumulated_changes.keys()]
+    df_modified = st.session_state.working_df[
+        st.session_state.working_df["template_id"].astype(str).isin(modified_tids)
+    ]
+
+    group_cols = []
+    for col in ["Casos de Uso", "AUDIENCIA", "Oferta"]:
+        if col in df_modified.columns:
+            group_cols.append(col)
+
+    if group_cols:
+        grouped = df_modified.groupby(group_cols).size().reset_index(name="Registros modificados")
+        for _, row in grouped.iterrows():
+            parts = [str(row[c]) for c in group_cols]
+            st.write(f"• **{', '.join(parts)}** — {row['Registros modificados']} registros modificados")
+    else:
+        st.write(f"Total: {len(modified_tids)} registros modificados")
 
 # ---------------------------------------------------------------------------
 # Tabla con filas expandibles para edición (paginada)
@@ -302,7 +326,7 @@ else:
             # Botón guardar a la derecha (arriba)
             _, btn_col = st.columns([5, 1])
             with btn_col:
-                save_clicked = st.button("💾 Guardar", key=f"save_{i}_{tid}", type="primary", use_container_width=True)
+                save_clicked = st.button("Guardar", key=f"save_{i}_{tid}", type="primary", use_container_width=True)
 
             # Mostrar campos en 3 columnas
             new_values = {}
@@ -358,27 +382,3 @@ else:
             st.session_state.current_page += 1
             st.rerun()
 
-# ---------------------------------------------------------------------------
-# Resumen de registros modificados
-# ---------------------------------------------------------------------------
-if st.session_state.accumulated_changes:
-    st.divider()
-    st.subheader("📊 Registros modificados")
-
-    modified_tids = [str(k) for k in st.session_state.accumulated_changes.keys()]
-    df_modified = st.session_state.working_df[
-        st.session_state.working_df["template_id"].astype(str).isin(modified_tids)
-    ]
-
-    group_cols = []
-    for col in ["Casos de Uso", "AUDIENCIA", "Oferta"]:
-        if col in df_modified.columns:
-            group_cols.append(col)
-
-    if group_cols:
-        grouped = df_modified.groupby(group_cols).size().reset_index(name="Registros modificados")
-        for _, row in grouped.iterrows():
-            parts = [str(row[c]) for c in group_cols]
-            st.write(f"• **{', '.join(parts)}** — {row['Registros modificados']} registros modificados")
-    else:
-        st.write(f"Total: {len(modified_tids)} registros modificados")
