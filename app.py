@@ -23,7 +23,6 @@ if _script_dir not in sys.path:
 from data_loader import load_config, load_resultado, list_versions, load_version, save_version
 from editor import detect_changes, ChangeReport
 from exporter import export_changes
-from mapper import autocomplete
 from validator import validate_distribution
 
 # ---------------------------------------------------------------------------
@@ -85,21 +84,22 @@ if st.session_state.original_df is None:
         st.error(f"Error al cargar resultado.xlsx: {e}")
         st.stop()
 
-    ignored = config.get("ignored_columns", [])
-    df_raw = autocomplete(df_raw, ignored_columns=ignored)
     st.session_state.original_df = df_raw.copy()
 
+    # Eliminar columnas ignoradas al cargar
     drop_cols = config.get("drop_columns", [])
     for col in drop_cols:
         if col in st.session_state.original_df.columns:
             st.session_state.original_df = st.session_state.original_df.drop(columns=[col])
 
+    # Filtrar solo scenarios permitidos
     allowed = config.get("allowed_scenarios")
     if allowed and "scenario_id" in st.session_state.original_df.columns:
         st.session_state.original_df = st.session_state.original_df[
             st.session_state.original_df["scenario_id"].astype(str).isin([str(s) for s in allowed])
         ].reset_index(drop=True)
 
+    # Excluir registros con patrones ignorados en template_id (ej. ITM#)
     exclude_patterns = config.get("exclude_template_patterns", [])
     if exclude_patterns and "template_id" in st.session_state.original_df.columns:
         for pattern in exclude_patterns:
@@ -306,11 +306,11 @@ else:
                     current_val = str(row[col_name]) if col_name in row.index and pd.notna(row[col_name]) else ""
                     with input_cols[k]:
                         new_values[col_name] = st.text_input(
-                            col_name, value=current_val, key=f"row_{i}_{col_name}"
+                            col_name, value=current_val, key=f"row_{tid}_{col_name}"
                         )
 
             # Botón guardar dentro del expander
-            if st.button("💾 Guardar cambio", key=f"save_{i}", type="primary"):
+            if st.button("💾 Guardar cambio", key=f"save_{tid}", type="primary"):
                 original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
                 original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
 
