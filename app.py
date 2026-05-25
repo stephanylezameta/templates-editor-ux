@@ -252,7 +252,7 @@ with col2:
             st.download_button(
                 "📥 Descargar cambios",
                 data=excel_bytes,
-                file_name="cambios.xlsx",
+                file_name=f"cambios_{pd.Timestamp.now().strftime('%Y-%m-%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
             )
@@ -275,7 +275,7 @@ else:
     ]
 
     # Paginación
-    PAGE_SIZE = 15
+    PAGE_SIZE = 20
     total_rows = len(df_display)
     total_pages = max(1, (total_rows + PAGE_SIZE - 1) // PAGE_SIZE)
 
@@ -306,11 +306,11 @@ else:
                     current_val = str(row[col_name]) if col_name in row.index and pd.notna(row[col_name]) else ""
                     with input_cols[k]:
                         new_values[col_name] = st.text_input(
-                            col_name, value=current_val, key=f"row_{tid}_{col_name}"
+                            col_name, value=current_val, key=f"row_{i}_{tid}_{col_name}"
                         )
 
             # Botón guardar dentro del expander
-            if st.button("💾 Guardar cambio", key=f"save_{tid}", type="primary"):
+            if st.button("💾 Guardar cambio", key=f"save_{i}_{tid}", type="primary"):
                 original_row_mask = st.session_state.original_df["template_id"].astype(str) == tid
                 original_row = st.session_state.original_df[original_row_mask].iloc[0] if original_row_mask.any() else None
 
