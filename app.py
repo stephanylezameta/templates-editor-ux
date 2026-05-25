@@ -218,8 +218,7 @@ with col1:
                         f"{resumen['deleted']} eliminados"
                     )
                     if report.modified:
-                        with st.expander(f'Modificados ({resumen['modified']})"):
-                            for change in report.modified:
+                        with st.expander(f"Modificados ({resumen['modified']})"):                            for change in report.modified:
                                 st.markdown(f"**{change.template_id}**")
                                 for fc in change.field_changes:
                                     st.text(f"  {fc.field}: {fc.old_value} → {fc.new_value}")
